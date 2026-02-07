@@ -1,0 +1,252 @@
+#cloud-config
+# =============================================================================
+# Cloud-Init: Bootstrap OpenClaw + Ollama on Ubuntu 22.04 ARM64
+# =============================================================================
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - wget
+  - git
+  - jq
+  - unzip
+  - htop
+  - tmux
+  - ufw
+  - ca-certificates
+
+# --- Open iptables for OCI (Ubuntu requires this in addition to security lists) ---
+runcmd:
+  # ============================================================
+  # 1. Fix OCI iptables (Ubuntu images block traffic by default)
+  # ============================================================
+  - iptables -F
+  - iptables -P INPUT ACCEPT
+  - iptables -P FORWARD ACCEPT
+  - iptables -P OUTPUT ACCEPT
+  - netfilter-persistent save || true
+
+  # ============================================================
+  # 2. Install Node.js 22 LTS (required for OpenClaw)
+  # ============================================================
+  - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  - apt-get install -y nodejs
+  - node --version
+  - npm --version
+
+  # ============================================================
+  # 3. Install Ollama
+  # ============================================================
+  - curl -fsSL https://ollama.com/install.sh | sh
+  - systemctl enable ollama
+  - systemctl start ollama
+  # Wait for Ollama to be ready
+  - sleep 10
+  # Pull the default model (runs in background)
+  - |
+    nohup ollama pull ${ollama_model} > /var/log/ollama-pull.log 2>&1 &
+
+  # ============================================================
+  # 4. Create dedicated openclaw user
+  # ============================================================
+  - useradd -m -s /bin/bash openclaw
+  - usermod -aG sudo openclaw
+
+  # ============================================================
+  # 5. Write the setup script
+  # ============================================================
+  - |
+    cat > /home/ubuntu/setup-openclaw.sh << 'SETUP_SCRIPT'
+    #!/bin/bash
+    set -euo pipefail
+
+    echo "============================================"
+    echo "  OpenClaw Setup Script"
+    echo "  Oracle Cloud ARM64 Instance"
+    echo "============================================"
+
+    # --- Verify prerequisites ---
+    echo "[1/5] Checking prerequisites..."
+    node --version || { echo "ERROR: Node.js not found"; exit 1; }
+    ollama --version || { echo "ERROR: Ollama not found"; exit 1; }
+    echo "✓ Node.js and Ollama installed"
+
+    # --- Install OpenClaw ---
+    echo "[2/5] Installing OpenClaw..."
+    if ! command -v openclaw &>/dev/null; then
+      npm install -g openclaw
+      echo "✓ OpenClaw installed"
+    else
+      echo "✓ OpenClaw already installed"
+    fi
+    openclaw --version
+
+    # --- Wait for Ollama model to finish pulling ---
+    echo "[3/5] Checking Ollama model status..."
+    echo "  (This may take a while if the model is still downloading)"
+    while ! ollama list | grep -q "${ollama_model%%:*}"; do
+      echo "  Waiting for model download..."
+      sleep 30
+    done
+    echo "✓ Ollama model ready"
+
+    # --- Set up systemd service for OpenClaw ---
+    echo "[4/5] Creating systemd service..."
+    cat > /etc/systemd/system/openclaw-gateway.service << 'SYSTEMD'
+    [Unit]
+    Description=OpenClaw Gateway
+    After=network.target ollama.service
+    Wants=ollama.service
+
+    [Service]
+    Type=simple
+    User=openclaw
+    WorkingDirectory=/home/openclaw
+    ExecStart=/usr/bin/openclaw gateway run
+    Restart=always
+    RestartSec=30
+    Environment=NODE_ENV=production
+    Environment=HOME=/home/openclaw
+
+    [Install]
+    WantedBy=multi-user.target
+    SYSTEMD
+
+    systemctl daemon-reload
+    echo "✓ Systemd service created"
+
+    # --- Create cron job to restart gateway (stability) ---
+    echo "[5/5] Setting up health check cron..."
+    cat > /etc/cron.d/openclaw-health << 'CRON'
+    # Restart OpenClaw gateway if it's not responding (every 30 min)
+    */30 * * * * root systemctl is-active --quiet openclaw-gateway || systemctl restart openclaw-gateway
+    CRON
+    echo "✓ Health check cron installed"
+
+    echo ""
+    echo "============================================"
+    echo "  Setup Complete!"
+    echo "============================================"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Switch to openclaw user:  sudo su - openclaw"
+    echo "  2. Run onboarding wizard:    openclaw onboard"
+    echo "     - Select Anthropic + OpenRouter as providers"
+    echo "     - Paste your API keys when prompted"
+    echo "     - Select Telegram as your channel"
+    echo "     - Paste your Telegram bot token"
+    echo ""
+    echo "  OR manually configure:"
+    echo "  3. Copy config template:     cp /home/ubuntu/openclaw-config.json ~/.openclaw/openclaw.json"
+    echo "  4. Edit with your API keys:  nano ~/.openclaw/openclaw.json"
+    echo "  5. Start the gateway:        openclaw gateway run"
+    echo "     (or: sudo systemctl start openclaw-gateway)"
+    echo ""
+    echo "  6. Open Telegram, message your bot, get pairing code"
+    echo "  7. Approve pairing:          openclaw pair approve telegram <CODE>"
+    echo ""
+    SETUP_SCRIPT
+
+    chmod +x /home/ubuntu/setup-openclaw.sh
+
+  # ============================================================
+  # 6. Write the OpenClaw config template
+  # ============================================================
+  - |
+    cat > /home/ubuntu/openclaw-config.json << 'CONFIG'
+    {
+      "models": {
+        "mode": "merge",
+        "providers": {
+          "ollama": {
+            "baseUrl": "http://127.0.0.1:11434",
+            "models": [
+              {
+                "id": "ollama/${ollama_model}",
+                "name": "Local Ollama (${ollama_model})",
+                "contextWindow": 65536,
+                "maxTokens": 8192
+              }
+            ]
+          },
+          "anthropic": {
+            "apiKey": "${anthropic_api_key}",
+            "models": [
+              {
+                "id": "anthropic/claude-sonnet-4-20250514",
+                "name": "Claude Sonnet 4",
+                "contextWindow": 200000,
+                "maxTokens": 8192
+              },
+              {
+                "id": "anthropic/claude-haiku",
+                "name": "Claude Haiku (fast/cheap)",
+                "contextWindow": 200000,
+                "maxTokens": 4096
+              }
+            ]
+          },
+          "openrouter": {
+            "baseUrl": "https://openrouter.ai/api/v1",
+            "apiKey": "${openrouter_api_key}",
+            "api": "openai-completions",
+            "models": [
+              {
+                "id": "openrouter/moonshotai/kimi-k2.5",
+                "name": "Kimi K2.5",
+                "contextWindow": 131072,
+                "maxTokens": 8192
+              }
+            ]
+          }
+        }
+      },
+      "agents": {
+        "defaults": {
+          "model": {
+            "primary": "anthropic/claude-sonnet-4-20250514",
+            "fallback": [
+              "openrouter/moonshotai/kimi-k2.5",
+              "ollama/${ollama_model}"
+            ]
+          },
+          "modelPatterns": {
+            "heartbeat": "ollama/${ollama_model}",
+            "subAgent": "openrouter/moonshotai/kimi-k2.5"
+          },
+          "modelAliases": {
+            "claude": "anthropic/claude-sonnet-4-20250514",
+            "haiku": "anthropic/claude-haiku",
+            "kimi": "openrouter/moonshotai/kimi-k2.5",
+            "local": "ollama/${ollama_model}"
+          }
+        }
+      },
+      "channels": {
+        "telegram": {
+          "enabled": true,
+          "token": "${telegram_bot_token}"
+        }
+      }
+    }
+    CONFIG
+
+    chown ubuntu:ubuntu /home/ubuntu/openclaw-config.json
+    chown ubuntu:ubuntu /home/ubuntu/setup-openclaw.sh
+
+  # ============================================================
+  # 7. Keep instance active (prevent OCI reclamation)
+  # ============================================================
+  - |
+    cat > /etc/cron.d/oci-keepalive << 'KEEPALIVE'
+    # Generate small CPU load to prevent OCI from reclaiming idle instance
+    */5 * * * * root dd if=/dev/urandom bs=1M count=10 of=/dev/null 2>/dev/null; sleep 2
+    KEEPALIVE
+
+final_message: |
+  ==============================================
+  Cloud-init complete!
+  SSH in and run: sudo bash /home/ubuntu/setup-openclaw.sh
+  ==============================================

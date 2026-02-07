@@ -1,0 +1,97 @@
+{
+  "_comment": "OpenClaw multi-model config: Claude + Kimi K2.5 + Ollama with Telegram",
+  "_docs": "https://docs.openclaw.ai/help/faq",
+
+  "models": {
+    "mode": "merge",
+    "providers": {
+
+      "ollama": {
+        "baseUrl": "http://127.0.0.1:11434",
+        "models": [
+          {
+            "id": "ollama/qwen2.5-coder:14b",
+            "name": "Qwen 2.5 Coder 14B (local)",
+            "contextWindow": 65536,
+            "maxTokens": 8192
+          }
+        ]
+      },
+
+      "anthropic": {
+        "_comment": "Get API key from https://console.anthropic.com OR use setup-token for subscriptions",
+        "apiKey": "PASTE_YOUR_ANTHROPIC_API_KEY_HERE",
+        "models": [
+          {
+            "id": "anthropic/claude-sonnet-4-20250514",
+            "name": "Claude Sonnet 4",
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "anthropic/claude-haiku",
+            "name": "Claude Haiku (fast/cheap)",
+            "contextWindow": 200000,
+            "maxTokens": 4096
+          },
+          {
+            "id": "anthropic/claude-opus-4-5",
+            "name": "Claude Opus 4.5 (premium)",
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          }
+        ]
+      },
+
+      "openrouter": {
+        "_comment": "Get API key from https://openrouter.ai/keys — Kimi K2.5 is very cheap here",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKey": "PASTE_YOUR_OPENROUTER_API_KEY_HERE",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "openrouter/moonshotai/kimi-k2.5",
+            "name": "Kimi K2.5 (via OpenRouter)",
+            "contextWindow": 131072,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
+
+  "agents": {
+    "defaults": {
+      "model": {
+        "_comment_primary": "Claude Sonnet for main reasoning — change to kimi or local to save costs",
+        "primary": "anthropic/claude-sonnet-4-20250514",
+        "fallback": [
+          "openrouter/moonshotai/kimi-k2.5",
+          "ollama/qwen2.5-coder:14b"
+        ]
+      },
+      "modelPatterns": {
+        "_comment": "Use cheap models for background tasks",
+        "heartbeat": "ollama/qwen2.5-coder:14b",
+        "subAgent": "openrouter/moonshotai/kimi-k2.5"
+      },
+      "modelAliases": {
+        "_comment": "Use /model <alias> in Telegram to switch on the fly",
+        "opus": "anthropic/claude-opus-4-5",
+        "claude": "anthropic/claude-sonnet-4-20250514",
+        "sonnet": "anthropic/claude-sonnet-4-20250514",
+        "haiku": "anthropic/claude-haiku",
+        "kimi": "openrouter/moonshotai/kimi-k2.5",
+        "local": "ollama/qwen2.5-coder:14b"
+      }
+    }
+  },
+
+  "channels": {
+    "telegram": {
+      "_comment": "Get token from @BotFather on Telegram",
+      "enabled": true,
+      "token": "PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+# =============================================================================
+# OCI Authentication - REQUIRED
+# =============================================================================
+# Find these in the OCI Console under your user profile -> API Keys
+tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaaXXXXXXXX"
+user_ocid        = "ocid1.user.oc1..aaaaaaaaXXXXXXXX"
+fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+private_key_path = "~/.oci/oci_api_key.pem"
+region           = "us-ashburn-1"     # Change to your home region
+
+# Use tenancy_ocid for root compartment (simplest for free tier)
+compartment_ocid = "ocid1.tenancy.oc1..aaaaaaaaXXXXXXXX"
+
+# =============================================================================
+# Instance Configuration
+# =============================================================================
+instance_display_name = "openclaw-server"
+instance_shape        = "VM.Standard.A1.Flex"
+instance_ocpus        = 4     # Max free = 4
+instance_memory_gb    = 24    # Max free = 24
+boot_volume_size_gb   = 100   # Max free = 200 (total across all instances)
+
+# REQUIRED: Find your region's Ubuntu image OCID:
+# oci compute image list --compartment-id <TENANCY_OCID> \
+#   --operating-system "Canonical Ubuntu" \
+#   --operating-system-version "22.04 Minimal aarch64" \
+#   --shape "VM.Standard.A1.Flex" --limit 1 \
+#   --query "data[0].id" --raw-output
+ubuntu_image_ocid = "ocid1.image.oc1.iad.aaaaaaaaXXXXXXXX"
+
+# =============================================================================
+# SSH Keys
+# =============================================================================
+ssh_public_key_path  = "~/.ssh/id_rsa.pub"
+ssh_private_key_path = "~/.ssh/id_rsa"
+
+# =============================================================================
+# API Keys for OpenClaw (can also configure after deploy via `openclaw onboard`)
+# =============================================================================
+# Anthropic API key — get from https://console.anthropic.com
+# Leave empty to configure later (or use Claude subscription setup-token)
+anthropic_api_key = ""
+
+# OpenRouter API key for Kimi K2.5 — get from https://openrouter.ai/keys
+openrouter_api_key = ""
+
+# Telegram Bot Token — get from @BotFather on Telegram
+telegram_bot_token = ""
+
+# Ollama model to pre-pull (ARM64 compatible, fits in 24GB RAM)
+# Good options: qwen2.5-coder:14b, qwen3:14b, llama3.3:8b, deepseek-r1:14b
+ollama_model = "qwen2.5-coder:14b"
