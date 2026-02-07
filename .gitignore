@@ -1,0 +1,43 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform variables (contains secrets!)
+terraform.tfvars
+*.auto.tfvars
+
+# OCI config and keys
+.oci/
+*.pem
+*.key
+
+# SSH keys
+*.pub
+id_rsa
+id_ed25519
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+personal_readme.md

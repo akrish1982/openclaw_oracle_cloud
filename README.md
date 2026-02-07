@@ -1,3 +1,7 @@
+# TODO
+
+1. Move all terraform code to terraform folder and ensure all other configurations work
+
 # OpenClaw on Oracle Cloud (OCI) Free Tier
 
 Deploy OpenClaw with **Ollama**, **Kimi K2.5** (via OpenRouter), and **Claude** (via Anthropic API/subscription) on an Oracle Cloud Always-Free ARM instance, connected to **Telegram**.
@@ -150,20 +154,21 @@ API costs depend on usage:
 - Oracle may reclaim idle instances (CPU <20% over 7 days). The OpenClaw gateway + Ollama should keep it above threshold.
 - Ollama on ARM64 with 24GB RAM can comfortably run models up to ~14B parameters (e.g., qwen2.5-coder:14b).
 - For Kimi K2.5, using OpenRouter is the most reliable path since direct NVIDIA endpoint integration has known issues with OpenClaw (see GitHub issue #9498).
-What's included:
+
+## What's included:
 
 terraform/ — Full OCI infrastructure as code:
 
-VCN + public subnet + internet gateway + security list (SSH only inbound)
-ARM Ampere A1 instance (4 OCPU / 24GB RAM — all free tier)
-Cloud-init that auto-installs Node.js, Ollama, and bootstraps everything on first boot
+-VCN + public subnet + internet gateway + security list (SSH only inbound)
+- ARM Ampere A1 instance (4 OCPU / 24GB RAM — all free tier)
+- Cloud-init that auto-installs Node.js, Ollama, and bootstraps everything on first boot
 
 
 scripts/setup-openclaw.sh — Standalone setup script that installs OpenClaw, creates a systemd service, and writes the multi-model config
 scripts/openclaw-config.json — Multi-model routing config with Claude as primary, Kimi K2.5 as fallback/sub-agent, and Ollama for heartbeats (saves cost)
 scripts/cheatsheet.sh — Quick reference for all commands
 
-Key things to know before deploying:
+#### Key things to know before deploying:
 
 Kimi K2.5 via OpenRouter is the reliable path — direct NVIDIA endpoint integration has known bugs with OpenClaw (GitHub issue #9498)
 Claude subscription works via claude setup-token from Claude Code CLI (no API key needed), or you can use a standard API key

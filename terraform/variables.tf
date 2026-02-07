@@ -32,6 +32,12 @@ variable "compartment_ocid" {
   type        = string
 }
 
+variable "availability_domain_index" {
+  description = "Index of the availability domain to use (0, 1, or 2). Change this if one AD is out of capacity."
+  type        = number
+  default     = 0
+}
+
 # =============================================================================
 # Instance Configuration
 # =============================================================================

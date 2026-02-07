@@ -86,7 +86,7 @@ runcmd:
     # --- Wait for Ollama model to finish pulling ---
     echo "[3/5] Checking Ollama model status..."
     echo "  (This may take a while if the model is still downloading)"
-    while ! ollama list | grep -q "${ollama_model%%:*}"; do
+    while ! ollama list | grep -q "${split(":", ollama_model)[0]}"; do
       echo "  Waiting for model download..."
       sleep 30
     done
