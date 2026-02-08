@@ -9,7 +9,7 @@
 set -euo pipefail
 
 MAX_ATTEMPTS=480  # 8 hours of retrying
-SLEEP_SECONDS=639 # 10 minutes plus a few more seconds
+SLEEP_SECONDS=137 # 2 minutes plus a few more seconds
 ATTEMPT=0
 
 echo "============================================"

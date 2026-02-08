@@ -132,3 +132,13 @@ variable "ollama_model" {
   type        = string
   default     = "qwen2.5-coder:14b"
 }
+
+# =============================================================================
+# Tailscale
+# =============================================================================
+variable "tailscale_auth_key" {
+  description = "Tailscale auth key for unattended setup (generate at https://login.tailscale.com/admin/settings/keys)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

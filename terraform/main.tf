@@ -177,6 +177,7 @@ resource "oci_core_instance" "openclaw_instance" {
       openrouter_api_key = var.openrouter_api_key
       telegram_bot_token = var.telegram_bot_token
       ollama_model       = var.ollama_model
+      tailscale_auth_key = var.tailscale_auth_key
     }))
   }
 
