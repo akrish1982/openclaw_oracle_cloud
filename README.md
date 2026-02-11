@@ -1,7 +1,3 @@
-# TODO
-
-1. Move all terraform code to terraform folder and ensure all other configurations work
-
 # OpenClaw on Oracle Cloud (OCI) Free Tier
 
 Deploy OpenClaw with **Ollama**, **Kimi K2.5** (via OpenRouter), and **Claude** (via Anthropic API/subscription) on an Oracle Cloud Always-Free ARM instance, connected to **Telegram**.
